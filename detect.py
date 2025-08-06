@@ -67,7 +67,7 @@ def main(_argv):
 
     plt.imshow(img)
     plt.axis('off')
-    plt.show() # test
+    plt.show() # test test test
 
 
     # cv2.imwrite(FLAGS.output, img)
