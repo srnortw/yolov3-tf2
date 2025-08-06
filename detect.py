@@ -11,7 +11,7 @@ from yolov3_tf2.dataset import transform_images, load_tfrecord_dataset
 from yolov3_tf2.utils import draw_outputs
 
 flags.DEFINE_string('classes', './data/coco.names', 'path to classes file')
-flags.DEFINE_string('weights', './checkpoints/yolov3.tf',
+flags.DEFINE_string('weights', './checkpoints/yolov3.weights.h5',
                     'path to weights file')
 flags.DEFINE_boolean('tiny', False, 'yolov3 or yolov3-tiny')
 flags.DEFINE_integer('size', 416, 'resize images to')
@@ -31,7 +31,7 @@ def main(_argv):
     else:
         yolo = YoloV3(classes=FLAGS.num_classes)
 
-    yolo.load_weights(FLAGS.weights).expect_partial()
+    yolo.load_weights(FLAGS.weights)#.expect_partial()
     logging.info('weights loaded')
 
     class_names = [c.strip() for c in open(FLAGS.classes).readlines()]
@@ -62,7 +62,15 @@ def main(_argv):
 
     img = cv2.cvtColor(img_raw.numpy(), cv2.COLOR_RGB2BGR)
     img = draw_outputs(img, (boxes, scores, classes, nums), class_names)
-    cv2.imwrite(FLAGS.output, img)
+
+    import matplotlib.pyplot as plt
+
+    plt.imshow(img)
+    plt.axis('off')
+    plt.show()
+
+
+    # cv2.imwrite(FLAGS.output, img)
     logging.info('output saved to: {}'.format(FLAGS.output))
 
 

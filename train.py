@@ -22,7 +22,7 @@ import yolov3_tf2.dataset as dataset
 flags.DEFINE_string('dataset', '', 'path to dataset')
 flags.DEFINE_string('val_dataset', '', 'path to validation dataset')
 flags.DEFINE_boolean('tiny', False, 'yolov3 or yolov3-tiny')
-flags.DEFINE_string('weights', './checkpoints/yolov3.tf',
+flags.DEFINE_string('weights', './checkpoints/yolov3.weights.h5',
                     'path to weights file')
 flags.DEFINE_string('classes', './data/coco.names', 'path to classes file')
 flags.DEFINE_enum('mode', 'fit', ['fit', 'eager_fit', 'eager_tf'],
@@ -93,7 +93,7 @@ def setup_model():
             # freeze everything
             freeze_all(model)
 
-    optimizer = tf.keras.optimizers.Adam(lr=FLAGS.learning_rate)
+    optimizer = tf.keras.optimizers.Adam(learning_rate=FLAGS.learning_rate)
     loss = [YoloLoss(anchors[mask], classes=FLAGS.num_classes)
             for mask in anchor_masks]
 
@@ -196,7 +196,7 @@ def main(_argv):
         callbacks = [
             ReduceLROnPlateau(verbose=1),
             EarlyStopping(patience=3, verbose=1),
-            ModelCheckpoint('checkpoints/yolov3_train_{epoch}.tf',
+            ModelCheckpoint('checkpoints/yolov3_train_{epoch}.weights.h5',
                             verbose=1, save_weights_only=True),
             TensorBoard(log_dir='logs')
         ]
