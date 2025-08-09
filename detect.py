@@ -70,7 +70,7 @@ def main(_argv):
     plt.show() # test1 test1
 
 
-    # cv2.imwrite(FLAGS.output, img)
+    cv2.imwrite(FLAGS.output, img)
     logging.info('output saved to: {}'.format(FLAGS.output))
 
 

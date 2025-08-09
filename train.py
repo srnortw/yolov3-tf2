@@ -76,6 +76,13 @@ def setup_model():
             model.get_layer('yolo_darknet').set_weights(
                 model_pretrained.get_layer('yolo_darknet').get_weights())
             freeze_all(model.get_layer('yolo_darknet'))
+            
+            for i in range(3):
+              model.get_layer('yolo_conv_'+str(i)).set_weights(
+                  model_pretrained.get_layer('yolo_conv_'+str(i)).get_weights())
+              freeze_all(model.get_layer('yolo_conv_'+str(i)))
+              
+            
         elif FLAGS.transfer == 'no_output':
             for l in model.layers:
                 if not l.name.startswith('yolo_output'):
@@ -93,6 +100,7 @@ def setup_model():
             # freeze everything
             freeze_all(model)
 
+    model.summary()
     optimizer = tf.keras.optimizers.Adam(learning_rate=FLAGS.learning_rate)
     loss = [YoloLoss(anchors[mask], classes=FLAGS.num_classes)
             for mask in anchor_masks]
@@ -194,7 +202,7 @@ def main(_argv):
     else:
 
         callbacks = [
-            ReduceLROnPlateau(verbose=1),
+            ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=1, verbose=2,min_lr=1e-7),
             EarlyStopping(patience=3, verbose=1),
             ModelCheckpoint('checkpoints/yolov3_train_{epoch}.weights.h5',
                             verbose=1, save_weights_only=True),
