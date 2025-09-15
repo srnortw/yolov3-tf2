@@ -136,9 +136,13 @@ def main(_argv):
         train_dataset = dataset.load_fake_dataset()
     train_dataset = train_dataset.shuffle(buffer_size=512)
     train_dataset = train_dataset.batch(FLAGS.batch_size)
+    #
+    # for i in train_dataset.take(1):
+    #     print(i[1])
     train_dataset = train_dataset.map(lambda x, y: (
         dataset.transform_images(x, FLAGS.size),
         dataset.transform_targets(y, anchors, anchor_masks, FLAGS.size)))
+
     train_dataset = train_dataset.prefetch(
         buffer_size=tf.data.experimental.AUTOTUNE)
 
@@ -209,6 +213,8 @@ def main(_argv):
             TensorBoard(log_dir='logs')
         ]
 
+        # for i in train_dataset.take(10):
+        #     print(i[1][0])
         start_time = time.time()
         history = model.fit(train_dataset,
                             epochs=FLAGS.epochs,

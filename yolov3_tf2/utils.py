@@ -60,7 +60,7 @@ def load_darknet_weights(model, weights_file, tiny=False):
             # darknet shape (out_dim, in_dim, height, width)
             conv_shape = (filters, in_dim, size, size)
             conv_weights = np.fromfile(
-                wf, dtype=np.float32, count=np.product(conv_shape))
+                wf, dtype=np.float32, count=np.prod(conv_shape))
             # tf shape (height, width, in_dim, out_dim)
             conv_weights = conv_weights.reshape(
                 conv_shape).transpose([2, 3, 1, 0])

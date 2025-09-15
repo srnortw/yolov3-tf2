@@ -124,7 +124,7 @@ def load_tfrecord_dataset(file_pattern, class_file, size=416):
         class_file, tf.string, 0, tf.int64, LINE_NUMBER, delimiter="\n"), -1)
 
     files = tf.data.Dataset.list_files(file_pattern)
-    dataset = files.flat_map(tf.data.TFRecordDataset)
+    dataset = files.flat_map(tf.data.TFRecordDataset)#dataset = files.flat_map(lambda fi: tf.data.TFRecordDataset(fi,compression_type='GZIP'))
     return dataset.map(lambda x: parse_tfrecord(x, class_table, size))
 
 
