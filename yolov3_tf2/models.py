@@ -30,6 +30,21 @@ flags.DEFINE_float('yolo_score_threshold', 0.5, 'score threshold')
 yolo_anchors = np.array([(10, 13), (16, 30), (33, 23), (30, 61), (62, 45),
                          (59, 119), (116, 90), (156, 198), (373, 326)],
                         np.float32) / 416
+
+# yolo_anchors=np.load("yolov3_tf2/anchor_african_animals.npy")/ 416
+
+# npy=np.load("yolov3_tf2/anchor_construction_safety_objdet.npy")
+# print(npy)
+# yolo_anchors=npy/416
+
+# npy=np.load("yolov3_tf2/anchor_african_animals.npy.npy")
+# print(npy)
+# yolo_anchors=npy/416
+
+# yolo_anchors=np.load("yolov3_tf2/anchor_sea_objdet.npy")/ 416
+
+print(yolo_anchors,'hey i am here')
+
 yolo_anchor_masks = np.array([[6, 7, 8], [3, 4, 5], [0, 1, 2]])
 
 yolo_tiny_anchors = np.array([(10, 14), (23, 27), (37, 58),
@@ -179,6 +194,7 @@ def yolo_boxes(pred, anchors, classes):
 
     box_x1y1 = box_xy - box_wh / 2
     box_x2y2 = box_xy + box_wh / 2
+
     bbox = tf.concat([box_x1y1, box_x2y2], axis=-1)
 
     return bbox, objectness, class_probs, pred_box
@@ -188,14 +204,28 @@ def yolo_nms(outputs, anchors, masks, classes):
     # boxes, conf, type
     b, c, t = [], [], []
 
-    for o in outputs:
+    an=[]
+
+    for i,o in enumerate(outputs):
+
+        obj_shape = tf.shape(o[1])
+
+        anchor_ids = tf.reshape(tf.range(3, dtype=tf.int32) + (3 * i), (1, 1, 1, 3, 1))
+
+        anchor_num = tf.zeros(obj_shape, dtype=tf.int32)+anchor_ids
+
+
         b.append(tf.reshape(o[0], (tf.shape(o[0])[0], -1, tf.shape(o[0])[-1])))
         c.append(tf.reshape(o[1], (tf.shape(o[1])[0], -1, tf.shape(o[1])[-1])))
         t.append(tf.reshape(o[2], (tf.shape(o[2])[0], -1, tf.shape(o[2])[-1])))
 
+        an.append(tf.reshape(anchor_num, (tf.shape(anchor_num)[0], -1, tf.shape(anchor_num)[-1])))
+
     bbox = tf.concat(b, axis=1)
     confidence = tf.concat(c, axis=1)
     class_probs = tf.concat(t, axis=1)
+
+    anchors_nums=tf.concat(an, axis=1)
 
     # If we only have one class, do not multiply by class_prob (always 0.5)
     if classes == 1:
@@ -203,34 +233,90 @@ def yolo_nms(outputs, anchors, masks, classes):
     else:
         scores = confidence * class_probs
 
-    dscores = tf.squeeze(scores, axis=0)
-    scores = tf.reduce_max(dscores,[1])
-    bbox = tf.reshape(bbox,(-1,4))
-    classes = tf.argmax(dscores,1)
-    selected_indices, selected_scores = tf.image.non_max_suppression_with_scores(
-        boxes=bbox,
-        scores=scores,
-        max_output_size=FLAGS.yolo_max_boxes,
-        iou_threshold=FLAGS.yolo_iou_threshold,
-        score_threshold=FLAGS.yolo_score_threshold,
-        soft_nms_sigma=0.5
+    def nms_for_single_image(inputs):
+        """inputs is (bbox, scores, classes, anchors_nums) for one image."""
+        
+        # Unpack the single image data (shape is now (Total_Boxes, Dims))
+        #b, s, c, a = inputs
+
+        b, s_all, _, a = inputs 
+
+        # 2a. Determine the final score and class for NMS
+        # The score used for NMS must be the maximum score across all classes for that box.
+        max_scores = tf.reduce_max(s_all, axis=1) # (Total_Boxes,)
+        final_classes = tf.argmax(s_all, axis=1, output_type=tf.int64) # (Total_Boxes,)
+        
+        # Squeeze anchor IDs from (Total_Boxes, 1) to (Total_Boxes,)
+        a_squeezed = tf.squeeze(a, axis=-1)
+        
+        # Apply standard NMS
+        selected_indices, selected_scores = tf.image.non_max_suppression_with_scores(
+          boxes=b,
+          scores=max_scores,
+          max_output_size=FLAGS.yolo_max_boxes,
+          iou_threshold=FLAGS.yolo_iou_threshold,
+          score_threshold=FLAGS.yolo_score_threshold,
+          soft_nms_sigma=0.5
+            # ... other NMS parameters ...
+        )
+        
+        # Gather outputs based on NMS selection
+        boxes = tf.gather(b, selected_indices)
+        scores = selected_scores
+        classes = tf.gather(final_classes, selected_indices)
+        anchors_nums = tf.gather(a_squeezed, selected_indices)
+        
+        num_valid_nms_boxes = tf.shape(selected_indices)[0]
+
+        # Pad results back to a fixed size for the map_fn output structure
+        # (This is necessary for map_fn to have a consistent output shape)
+        def pad_to_max(tensor):
+            pad_size = FLAGS.yolo_max_boxes - tf.shape(tensor)[0]
+            # Assumes 4 dims for boxes, 1 for others
+            if len(tensor.shape) == 2:
+                padding = tf.zeros((pad_size, tf.shape(tensor)[1]), dtype=tensor.dtype)
+            else:
+                padding = tf.zeros(pad_size, dtype=tensor.dtype)
+            return tf.concat([tensor, padding], axis=0)
+
+        return (
+            pad_to_max(boxes), 
+            pad_to_max(scores),
+            pad_to_max(classes), 
+            pad_to_max(anchors_nums),
+            num_valid_nms_boxes
+        )
+
+
+
+    # 3. Vectorize the function across the batch dimension
+    boxes_batch, scores_batch, classes_batch, anchors_batch,valid_detections = tf.map_fn(
+        nms_for_single_image,
+        elems=(bbox, scores, class_probs, anchors_nums),
+        fn_output_signature=(tf.float32, tf.float32, tf.int64, tf.int32, tf.int32)
     )
-    
-    num_valid_nms_boxes = tf.shape(selected_indices)[0]
 
-    selected_indices = tf.concat([selected_indices,tf.zeros(FLAGS.yolo_max_boxes-num_valid_nms_boxes, tf.int32)], 0)
-    selected_scores = tf.concat([selected_scores,tf.zeros(FLAGS.yolo_max_boxes-num_valid_nms_boxes,tf.float32)], -1)
+    # import pdb
 
-    boxes=tf.gather(bbox, selected_indices)
-    boxes = tf.expand_dims(boxes, axis=0)
-    scores=selected_scores
-    scores = tf.expand_dims(scores, axis=0)
-    classes = tf.gather(classes,selected_indices)
-    classes = tf.expand_dims(classes, axis=0)
-    valid_detections=num_valid_nms_boxes
-    valid_detections = tf.expand_dims(valid_detections, axis=0)
+    # pdb.set_trace()
 
-    return boxes, scores, classes, valid_detections
+    return boxes_batch, scores_batch, classes_batch,valid_detections,anchors_batch
+
+
+def yolo_nms_output_shape(input_shape):
+    # input_shape is ignored; we specify the fixed output shape based on MAX_BOXES
+    # (None, MAX_BOXES, 4),    # Boxes 
+    # (None, MAX_BOXES),       # Scores
+    # (None, MAX_BOXES),       # Classes
+    # (None, MAX_BOXES),       # Anchor IDs
+    # (None,)                  # Counts
+    return [
+        (None, FLAGS.yolo_max_boxes, 4), 
+        (None, FLAGS.yolo_max_boxes), 
+        (None, FLAGS.yolo_max_boxes), 
+        (None, FLAGS.yolo_max_boxes), 
+        (None,)
+    ]
 
 
 def YoloV3(size=None, channels=3, anchors=yolo_anchors,
@@ -259,7 +345,8 @@ def YoloV3(size=None, channels=3, anchors=yolo_anchors,
                      name='yolo_boxes_2')(output_2)
 
     outputs = Lambda(lambda x: yolo_nms(x, anchors, masks, classes),
-                     name='yolo_nms')((boxes_0[:3], boxes_1[:3], boxes_2[:3]))
+                     name='yolo_nms',
+                     output_shape=yolo_nms_output_shape)((boxes_0[:3], boxes_1[:3], boxes_2[:3]))
 
     return Model(inputs, outputs, name='yolov3')
 
@@ -289,6 +376,7 @@ def YoloV3Tiny(size=None, channels=3, anchors=yolo_tiny_anchors,
 
 
 def YoloLoss(anchors, classes=80, ignore_thresh=0.5):
+
     def yolo_loss(y_true, y_pred):
         # 1. transform all pred outputs
         # y_pred: (batch_size, grid, grid, anchors, (x, y, w, h, obj, ...cls))
@@ -345,5 +433,10 @@ def YoloLoss(anchors, classes=80, ignore_thresh=0.5):
         obj_loss = tf.reduce_sum(obj_loss, axis=(1, 2, 3))
         class_loss = tf.reduce_sum(class_loss, axis=(1, 2, 3))
 
-        return xy_loss + wh_loss + obj_loss + class_loss
+        return xy_loss + wh_loss + obj_loss + class_loss#,xy_loss + wh_loss,obj_loss,class_loss#xy_loss + wh_loss + obj_loss + class_loss
+
     return yolo_loss
+
+
+
+

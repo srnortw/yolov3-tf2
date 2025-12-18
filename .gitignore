@@ -2,6 +2,11 @@
 *.weights
 *.tar
 *.tfrecord
+*.tfrecord.gz
+*.zip
+
+
+
 /checkpoints/*
 /serving/*
 /logs/

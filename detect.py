@@ -44,21 +44,23 @@ def main(_argv):
         img_raw, _label = next(iter(dataset.take(1)))
     else:
         img_raw = tf.image.decode_image(
-            open(FLAGS.image, 'rb').read(), channels=3)
+            open(FLAGS.image, 'rb').read(), channels=3)#batch=1
 
     img = tf.expand_dims(img_raw, 0)
     img = transform_images(img, FLAGS.size)
 
     t1 = time.time()
-    boxes, scores, classes, nums = yolo(img)
+    boxes, scores, classes, nums,anchors_ids = yolo(img)
     t2 = time.time()
     logging.info('time: {}'.format(t2 - t1))
 
     logging.info('detections:')
-    for i in range(nums[0]):
-        logging.info('\t{}, {}, {}'.format(class_names[int(classes[0][i])],
+    for i in range(nums[0]):#for batch=1
+        logging.info('\t{}, {}, {}, {}'.format(class_names[int(classes[0][i])],
                                            np.array(scores[0][i]),
-                                           np.array(boxes[0][i])))
+                                           np.array(boxes[0][i])),
+                                           np.array(anchors_ids[0][i])),
+                                           
 
     img = cv2.cvtColor(img_raw.numpy(), cv2.COLOR_RGB2BGR)
     img = draw_outputs(img, (boxes, scores, classes, nums), class_names)
