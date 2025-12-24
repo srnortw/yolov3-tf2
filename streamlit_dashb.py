@@ -1,8 +1,6 @@
-import pickle#test from colab
+#import pickle#test from colab
 
-import tensorflow as tf
-
-import cv2 as cv
+#import tensorflow as tf
 
 import streamlit as st
 
