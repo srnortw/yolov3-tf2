@@ -1,0 +1,256 @@
+import pickle#test from colab
+
+import tensorflow as tf
+
+import cv2 as cv
+
+import streamlit as st
+
+import os
+
+
+
+
+import cv2
+import numpy as np
+
+# import ai_edge_litert.interpreter as tflite
+# from yolov3_tf2.models import (
+#     yolo_boxes_numpy as yolo_boxes,yolo_nms_numpy as yolo_nms,yolo_anchors,yolo_anchor_masks
+# )
+import time
+import random
+
+
+
+
+
+# File uploader widget
+uploaded_file = st.file_uploader("Choose a file", type=["jpg", "jpeg", "png"])
+
+
+@st.cache_resource
+def prepare(model_path):
+
+    # -----------------------------
+    # Load model and labels
+    # -----------------------------
+
+    interpreter = tf.lite.Interpreter(model_path=model_path)
+    interpreter.allocate_tensors()
+
+    return interpreter
+
+
+
+
+    # new_model = tf.keras.models.load_model(f'vision/models/{model_name}.keras')
+    #
+    # # Show the model architecture
+    # new_model.summary()
+    #
+    # with open(f"vision/unique_labels_folder/{model_name.split("_")[-2]}_unique_labels.pkl", "rb") as f:
+    #     unique_labels = pickle.load(f)
+    #
+    # return new_model,unique_labels
+
+
+MODEL_URL = "https://github.com/srnortw/yolov3-tf2/releases/download/weights/yolov3_animals_uint8.tflite"
+MODEL_PATH = "checkpoints/yolov3_animals_uint8.tflite"
+
+import urllib.request
+
+@st.cache_resource
+def prepare0():
+
+    if not os.path.exists(MODEL_PATH):
+        urllib.request.urlretrieve(MODEL_URL, 'checkpoints/yolov3_animals_uint8.tflite')
+
+    return MODEL_PATH
+
+@st.cache_data
+def prepare1(class_path):
+
+
+    class_names = [c.strip() for c in open(class_path).readlines()]
+
+    # -----------------------------
+    # Assign a random but fixed color to each class
+    # -----------------------------
+    random.seed(42)  # ensures same colors every run
+    class_colors = {name: tuple([random.randint(0, 255) for _ in range(3)]) for name in class_names}
+
+    return class_names,class_colors
+
+
+# import os
+#
+# current_dir = os.getcwd()
+# parent_dir = os.path.dirname(current_dir)
+#
+# os.chdir(parent_dir)
+
+z=prepare0()
+
+print(os.getcwd())
+
+# model_file = 'yolov3_animals_uint8'
+# MODEL_PATH = f"tflite-models/yolov3-animals/{model_file}.tflite"
+CLASS_PATH = "data/animals_class_names.txt"
+
+model_files = [f for f in os.listdir('checkpoints') if f.endswith(".tflite")]
+
+model_name= st.sidebar.radio("Pick A Model",model_files)
+
+model_path='checkpoints/'+model_name
+
+interpreter=prepare(model_path)
+
+
+
+
+
+class_names,class_colors=prepare1(CLASS_PATH)
+
+input_details = interpreter.get_input_details()
+output_details = interpreter.get_output_details()
+
+INPUT_SIZE = 416
+
+num_classes = len(class_names)
+
+
+# os.chdir('raspi3bp')
+# print(os.getcwd())
+from raspi3bp.yolov3_tf2.models import (
+    yolo_boxes_numpy as yolo_boxes,yolo_nms_numpy as yolo_nms,yolo_anchors,yolo_anchor_masks
+)
+
+
+# current_dir = os.getcwd()
+# parent_dir = os.path.dirname(current_dir)
+# os.chdir(parent_dir+'/data')
+
+if uploaded_file is not None:
+    # Display file name
+
+    file_content = uploaded_file.read()
+
+    img_array = np.frombuffer(file_content, dtype=np.uint8)
+    image = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+
+    input_image = cv2.resize(image, (INPUT_SIZE, INPUT_SIZE))
+
+    input_image = np.expand_dims(input_image, 0)
+
+
+    # -----------------------------
+    # Inference
+    # -----------------------------
+    start_time = time.time()
+
+    interpreter.set_tensor(input_details[0]['index'],input_image)
+    interpreter.invoke()
+
+    output_early = output_details[1]  # 13 grid
+
+    output_mid = output_details[0]  # 26 grid #102
+
+    output_deep = output_details[2]  # 52 grid
+
+    inference_time = time.time() - start_time
+    print(f"Inference + NMS + output parsing: {inference_time:.3f} s")
+
+    outputs = [output_early, output_mid, output_deep]
+
+    anchors, masks = yolo_anchors, yolo_anchor_masks
+
+    boxes = []
+
+    for i, output in enumerate(outputs):
+        output_data = interpreter.get_tensor(output['index'])
+
+        scale, zero_point = output['quantization']
+        real_output = scale * (output_data.astype(np.float32) - zero_point)
+
+        # print(scale,zero_point,i,real_output)
+
+        # print(np.min(real_output), np.max(real_output))
+
+        box = yolo_boxes(real_output, anchors[masks[i]], num_classes)[:3]
+
+        # print(box[0][0][0][0],i)
+
+        boxes.append(box)
+
+    boxes = tuple(boxes)
+
+    SCORE_THRESHOLD = st.sidebar.slider(
+        "Score threshold",
+        min_value=0.0,
+        max_value=1.0,
+        value=0.5,
+        step=0.25
+    )
+
+    boxes, scores, classes, nums, anch_nums = yolo_nms(boxes, num_classes,SCORE_THRESHOLD)
+
+
+    # -----------------------------
+    # Draw outputs
+    # -----------------------------
+    def draw_outputs(img, boxes, scores, classes, nums, class_names, class_colors, anch_nums):
+        img_h, img_w = img.shape[:2]
+        wh = np.array([img_w, img_h, img_w, img_h])
+
+        batch = len(nums)
+        for b in range(batch):
+            for i in range(nums[b]):
+                if scores[b][i] >= SCORE_THRESHOLD:
+                    #print(boxes[b][i], anch_nums[b][i])
+                    box = boxes[b][i] * wh
+                    x1, y1, x2, y2 = box.astype(np.int32)
+                    label = class_names[int(classes[b][i])]
+                    score = scores[b][i]
+                    anch_id=anch_nums[b][i]
+                    print(score,box,label,anch_id)
+                    color = class_colors[label]  # use pre-assigned color
+                    cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)  # (255, 0, 0)
+                    cv2.putText(img, f"{label} {score:.2f}", (x1, y1-5),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255 - color[0], 255 - color[1], 255 - color[2]),
+                                2)  # (0, 0, 255)
+
+        return img
+
+
+    # import pdb
+    # pdb.set_trace()
+
+    # SCORE_THRESHOLD = 0.5
+
+
+    image_out = draw_outputs(image, boxes, scores, classes, nums, class_names, class_colors, anch_nums)
+
+    right, left = st.columns(2)
+
+    with right:
+
+        st.write("Filename:", uploaded_file.name)
+                # Optionally, read contents
+        st.write("File size (bytes):", len(file_content))
+
+        st.image(image_out, caption="Uploaded Image", width=500)
+
+        class_names
+
+    # with left:
+    #     class_names
+
+
+#     image_rgb_uint = tf.image.resize(image_rgb_uint, input_shape, method='nearest')
+
+
+
+
