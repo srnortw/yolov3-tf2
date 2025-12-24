@@ -1,4 +1,4 @@
-tensorflow
+ai-edge-litert
 opencv-python-headless
 streamlit
 numpy

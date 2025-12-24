@@ -14,7 +14,7 @@ import os
 import cv2
 import numpy as np
 
-# import ai_edge_litert.interpreter as tflite
+import ai_edge_litert.interpreter as tflite
 # from yolov3_tf2.models import (
 #     yolo_boxes_numpy as yolo_boxes,yolo_nms_numpy as yolo_nms,yolo_anchors,yolo_anchor_masks
 # )
@@ -36,7 +36,7 @@ def prepare(model_path):
     # Load model and labels
     # -----------------------------
 
-    interpreter = tf.lite.Interpreter(model_path=model_path)
+    interpreter = tflite.Interpreter(model_path=model_path)
     interpreter.allocate_tensors()
 
     return interpreter
