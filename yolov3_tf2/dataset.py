@@ -76,6 +76,103 @@ def transform_images(x_train, size):
     return x_train
 
 
+
+def _random_flip(image,boxes,index):
+  # image=tf.image.stateless_random_flip_left_right(image,seed=seed)
+  # 1️⃣ Generate a random value
+  rnd_lr = tf.random.stateless_uniform([], seed=(index,0))
+  flipped_lr = rnd_lr > 0.5  # boolean tensor
+
+  # # 2️⃣ Conditionally flip both image and boxes
+  # image = tf.cond(flipped,
+  #                 lambda: tf.image.flip_left_right(image),
+  #                 lambda: image)
+
+  # Calculate mask for non-empty boxes
+  mask = tf.reduce_sum(boxes, axis=-1) != 0  # shape: (num_boxes,)
+       
+  def lr_flip_fn():
+    # Flip horizontally (x coordinates only)
+    flipped_boxes = tf.concat([
+      1.0 - boxes[:, 2:3],
+      boxes[:, 1:2],
+      1.0 - boxes[:, 0:1],
+      boxes[:, 3:4]
+      ], axis=1)
+    # Keep empty boxes untouched
+    return tf.where(tf.expand_dims(mask, axis=-1), flipped_boxes, boxes)
+
+
+  image,boxes = tf.cond(flipped_lr,
+  lambda: (tf.image.flip_left_right(image),lr_flip_fn()),
+  lambda: (image,boxes))
+
+
+
+  rnd_ud = tf.random.stateless_uniform([], seed=(index,1))
+  flipped_ud = rnd_ud > 0.99  # boolean tensor
+
+  def ud_flip_fn():
+    # Flip vertically (y coordinates only)
+    flipped_boxes = tf.concat([
+      boxes[:, 0:1],
+      1.0 - boxes[:, 3:4],
+      boxes[:, 2:3],
+      1.0 - boxes[:, 1:2]
+      ], axis=1)
+    # Keep empty boxes untouched
+    return tf.where(tf.expand_dims(mask, axis=-1), flipped_boxes, boxes)
+
+
+      
+  image,boxes = tf.cond(flipped_ud,
+  lambda: (tf.image.flip_up_down(image),ud_flip_fn()),
+  lambda: (image,boxes))
+
+  # # Apply only if flipped == True
+  # boxes = tf.cond(flipped, flip_fn, lambda: boxes)     
+
+  return image, boxes
+    
+
+def augmentation(image,y_train,index):
+
+  # # Derive per-sample unique seeds
+  # seed = tf.random.experimental.stateless_fold_in(base_seed, index)
+  # seeds = tf.random.experimental.stateless_split(seed, 4)
+
+  # # tf.print(seeds)
+
+  image,boxes=_random_flip(image,y_train[...,:4],index)#(index,0) seeds[0]
+
+  y_train=tf.concat([boxes[...,:4],y_train[...,4:5]],axis=-1)
+
+  # index=5
+
+  image=tf.image.stateless_random_contrast(image, lower=0.6, upper=1.4, seed=(index,2))
+
+  image=tf.image.stateless_random_brightness(image, max_delta=30, seed=(index,3))
+  #1.5
+  image=tf.image.stateless_random_saturation(image, lower=0.8, upper=1.2, seed=(index,4))
+
+  image=tf.image.stateless_random_hue(image,max_delta=0.08,seed=(index,5))
+
+  image=tf.clip_by_value(image, 0.0, 255.0)
+
+  # gry_rnd = tf.random.stateless_uniform([], seed=(index,4))
+
+  # tf.print(gry_rnd)
+
+  # gry_g=gry_rnd>0.5
+
+  # image=tf.cond(gry_g,lambda:image,lambda:tf.image.rgb_to_grayscale(image))
+
+  # image=tf.clip_by_value(image, 0.0, 255.0)
+
+  # image=tf.image.stateless_random_saturation(image, 0.5, 1.0, seed=(seed[0]+3,seed[1]))
+
+  return image,y_train
+
 # https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/using_your_own_dataset.md#conversion-script-outline-conversion-script-outline
 # Commented out fields are not required in our project
 IMAGE_FEATURE_MAP = {

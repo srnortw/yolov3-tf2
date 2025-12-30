@@ -26,10 +26,10 @@ flags.DEFINE_boolean('tiny', False, 'yolov3 or yolov3-tiny')
 flags.DEFINE_string('weights', './checkpoints/yolov3.weights.h5',
                     'path to weights file')
 flags.DEFINE_string('classes', './data/coco.names', 'path to classes file')
-flags.DEFINE_enum('mode', 'fit', ['fit', 'eager_fit', 'eager_tf'],
+flags.DEFINE_enum('mode', 'fit', ['fit', 'eager_fit', 'autograd_graph_tf'],
                   'fit: model.fit, '
                   'eager_fit: model.fit(run_eagerly=True), '
-                  'eager_tf: custom GradientTape')
+                  'autograd_graph_tf: custom GradientTape in graph mode')
 flags.DEFINE_enum('transfer', 'none',
                   ['none', 'darknet', 'no_output', 'frozen', 'fine_tune','open'],
                   'none: Training from scratch, '
@@ -40,7 +40,9 @@ flags.DEFINE_enum('transfer', 'none',
 flags.DEFINE_integer('size', 416, 'image size')
 flags.DEFINE_integer('epochs', 2, 'number of epochs')
 flags.DEFINE_integer('batch_size', 8, 'batch size')
+flags.DEFINE_float('lambda_reg', 1.0, 'lambda regularization parameter')
 flags.DEFINE_float('learning_rate', 1e-3, 'learning rate')
+flags.DEFINE_boolean('cosine_learning_decay_restarts',False, 'cosine learning decay restart function')
 flags.DEFINE_integer('num_classes', 80, 'number of classes in the model')
 flags.DEFINE_integer('weights_num_classes', None, 'specify num class for `weights` file if different, '
                      'useful in transfer learning with different number of classes')
@@ -125,24 +127,27 @@ def setup_model():
     #     alpha=alpha
     # )
 
-    training_size=1204#997#1080#638*80/100#1504
+    if FLAGS.cosine_learning_decay_restarts:
+      training_size=1204#997#1080#638*80/100#1504
 
-    #training_size=448
+      #training_size=448
 
-    steps_per_epoch=training_size/FLAGS.batch_size
+      steps_per_epoch=training_size/FLAGS.batch_size
 
-    from math import ceil
+      from math import ceil
 
 
-    first_decay_steps=int(ceil(10*steps_per_epoch))
+      first_decay_steps=int(10*ceil(steps_per_epoch))
 
-    lr_schedule = tf.keras.optimizers.schedules.CosineDecayRestarts(
-    initial_learning_rate=FLAGS.learning_rate,#0.1,
-    first_decay_steps=first_decay_steps,#376,
-    t_mul=2.0,   # cycle durations: 1000, 2000, 4000...
-    m_mul=0.9,   # max LRs: 0.1, 0.09, 0.081...
-    alpha=0.05#0.05
-    )
+      lr_schedule = tf.keras.optimizers.schedules.CosineDecayRestarts(
+      initial_learning_rate=FLAGS.learning_rate,#0.1,
+      first_decay_steps=first_decay_steps,#376,
+      t_mul=2.0,   # cycle durations: 1000, 2000, 4000...
+      m_mul=0.95,   # max LRs: 0.1, 0.09, 0.081... #0.9
+      alpha=0.03 # 0.05
+      )
+    else:
+      lr_schedule=FLAGS.learning_rate
 
     model.summary()
     optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
@@ -214,121 +219,9 @@ def main(_argv):
     # for v in train_dataset.take(1):
     #   print(v)
 
-
-
-    def random_flip(image,boxes,index):
-      # image=tf.image.stateless_random_flip_left_right(image,seed=seed)
-      # 1️⃣ Generate a random value
-      rnd_lr = tf.random.stateless_uniform([], seed=(index,0))
-      flipped_lr = rnd_lr > 0.5  # boolean tensor
-
-      # # 2️⃣ Conditionally flip both image and boxes
-      # image = tf.cond(flipped,
-      #                 lambda: tf.image.flip_left_right(image),
-      #                 lambda: image)
-
-      # Calculate mask for non-empty boxes
-      mask = tf.reduce_sum(boxes, axis=-1) != 0  # shape: (num_boxes,)
-       
-      def lr_flip_fn():
-          # Flip horizontally (x coordinates only)
-          flipped_boxes = tf.concat([
-                1.0 - boxes[:, 2:3],
-                boxes[:, 1:2],
-                1.0 - boxes[:, 0:1],
-                boxes[:, 3:4]
-            ], axis=1)
-            # Keep empty boxes untouched
-          return tf.where(tf.expand_dims(mask, axis=-1), flipped_boxes, boxes)
-
-
-      image,boxes = tf.cond(flipped_lr,
-                      lambda: (tf.image.flip_left_right(image),lr_flip_fn()),
-                      lambda: (image,boxes))
-
-
-
-      rnd_ud = tf.random.stateless_uniform([], seed=(index,1))
-      flipped_ud = rnd_ud > 0.99  # boolean tensor
-
-      def ud_flip_fn():
-          # Flip vertically (y coordinates only)
-          flipped_boxes = tf.concat([
-                boxes[:, 0:1],
-                1.0 - boxes[:, 3:4],
-                boxes[:, 2:3],
-                1.0 - boxes[:, 1:2]
-            ], axis=1)
-            # Keep empty boxes untouched
-          return tf.where(tf.expand_dims(mask, axis=-1), flipped_boxes, boxes)
-
-
-      
-      image,boxes = tf.cond(flipped_ud,
-                      lambda: (tf.image.flip_up_down(image),ud_flip_fn()),
-                      lambda: (image,boxes))
-
-
-
-
-      # # Apply only if flipped == True
-      # boxes = tf.cond(flipped, flip_fn, lambda: boxes)     
-
-      return image, boxes
-    
-
-    def augmentation(image,y_train,index):
-
-
-      # # Derive per-sample unique seeds
-      # seed = tf.random.experimental.stateless_fold_in(base_seed, index)
-      # seeds = tf.random.experimental.stateless_split(seed, 4)
-
-      # # tf.print(seeds)
-
-      image,boxes=random_flip(image,y_train[...,:4],index)#(index,0) seeds[0]
-
-      y_train=tf.concat([boxes[...,:4],y_train[...,4:5]],axis=-1)
-
-      # index=5
-
-
-      image=tf.image.stateless_random_contrast(image, lower=0.6, upper=1.4, seed=(index,2))
-
-      image=tf.image.stateless_random_brightness(image, max_delta=30, seed=(index,3))
-      #1.5
-      image=tf.image.stateless_random_saturation(image, lower=0.8, upper=1.2, seed=(index,4))
-
-      image=tf.image.stateless_random_hue(image,max_delta=0.08,seed=(index,5))
-
-      image=tf.clip_by_value(image, 0.0, 255.0)
-
-
-
-
-      # gry_rnd = tf.random.stateless_uniform([], seed=(index,4))
-
-      # tf.print(gry_rnd)
-
-      # gry_g=gry_rnd>0.5
-
-      # image=tf.cond(gry_g,lambda:image,lambda:tf.image.rgb_to_grayscale(image))
-
-
-
-
-      # image=tf.clip_by_value(image, 0.0, 255.0)
-
-
-
-      # image=tf.image.stateless_random_saturation(image, 0.5, 1.0, seed=(seed[0]+3,seed[1]))
-
-
-      return image,y_train
-
     # base_seed=(52,0)
     
-    train_dataset=train_dataset.enumerate().map(lambda i,inputs: augmentation(inputs[0],inputs[1],i))
+    train_dataset=train_dataset.enumerate().map(lambda i,inputs: dataset.augmentation(inputs[0],inputs[1],i))
     
     dataset_name=FLAGS.dataset.split('/')[-1]
 
@@ -363,8 +256,8 @@ def main(_argv):
 
 
     # train_dataset = train_dataset.enumerate().map(lambda i,data: (
-    #     dataset.transform_images(data[0],320+32*((i//10)%11)),
-    #     dataset.transform_targets(data[1], anchors, anchor_masks,320+32*((i//10)%11)))) #320-640
+    #     dataset.transform_images(data[0],352+64*((i//10)%3)),
+    #     dataset.transform_targets(data[1], anchors, anchor_masks,352+64*((i//10)%3)))) #320-640
 
     train_dataset = train_dataset.prefetch(
         buffer_size=tf.data.experimental.AUTOTUNE)
@@ -388,19 +281,18 @@ def main(_argv):
     if FLAGS.transfer=='no_output':
       limit=13
     elif FLAGS.transfer=='fine_tune':
-      limit=68
+      limit=69
     else:
       limit=0
 
-    if FLAGS.mode == 'eager_tf':
+    if FLAGS.mode == 'autograd_graph_tf':
         # Eager mode is great for debugging
         # Non eager graph mode is recommended for real training
         avg_loss = tf.keras.metrics.Mean('loss', dtype=tf.float32)
         avg_val_loss = tf.keras.metrics.Mean('val_loss', dtype=tf.float32)
 
         @tf.function
-        def train(res,images,labels,lambda_reg=1.0):#1.25
-
+        def train(res,images,labels,lambda_reg=FLAGS.lambda_reg):#1.25
           # for batch, (images, labels) in enumerate(train_dataset):
 
           #print(res)
@@ -428,7 +320,7 @@ def main(_argv):
           avg_loss.update_state(total_loss)
         
         @tf.function
-        def evaluate(val_dataset,lambda_reg=1.0):
+        def evaluate(val_dataset,lambda_reg=FLAGS.lambda_reg):#1.5
           for batch, (images, labels) in enumerate(val_dataset):
             outputs = model(images)
             regularization_loss =  tf.reduce_sum(model.losses)
@@ -467,6 +359,7 @@ def main(_argv):
             for batch, (images, labels) in enumerate(train_dataset):
               res=352+64*((batch//10)%3)#every 10 batch resolution increases 
               #res 480-  352 416 480
+              #res=416
               train(res,images,labels)
                 # logging.info("{}_train_{}, {}, {}".format(
                 #     epoch, batch, total_loss.numpy(),
