@@ -120,7 +120,7 @@ num_classes = len(class_names)
 
 # os.chdir('raspi3bp')
 # print(os.getcwd())
-from raspi3bp.yolov3_tf2.models import (
+from yolov3_tf2.models_raspi3bp import (
     yolo_boxes_numpy as yolo_boxes,yolo_nms_numpy as yolo_nms,yolo_anchors,yolo_anchor_masks
 )
 
