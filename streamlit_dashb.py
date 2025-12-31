@@ -67,7 +67,7 @@ def prepare0():
   #   if not os.path.exists(model_paths[i]):
   #       urllib.request.urlretrieve(model_url, model_paths[i])
   
-  with open("git_releases_file_urls.txt") as f:
+  with open("github_releases_file_urls.txt") as f:
       model_urls = [line.strip() for line in f if line.strip()]
 
   model_paths = []
