@@ -180,7 +180,7 @@ def yolo_boxes_numpy(pred, anchors, num_classes):
 # ------------------------
 # yolo_nms (numpy)
 # ------------------------
-def yolo_nms_numpy(outputs, classes,score_thresh=0.5):
+def yolo_nms_numpy(outputs, classes,score_thresh=0.5,sigma=0.5):
 	
     """
     outputs: list of tuples as returned by yolo_boxes_numpy (bbox, objectness, class_probs, pred_box)

@@ -1,26 +1,15 @@
-#import pickle#test from colab
-
-#import tensorflow as tf
-
 import streamlit as st
 
 import os
-
-
 
 
 import cv2
 import numpy as np
 
 import ai_edge_litert.interpreter as tflite
-# from yolov3_tf2.models import (
-#     yolo_boxes_numpy as yolo_boxes,yolo_nms_numpy as yolo_nms,yolo_anchors,yolo_anchor_masks
-# )
+
 import time
 import random
-
-
-
 
 
 # File uploader widget
@@ -38,9 +27,6 @@ def prepare(model_path):
     interpreter.allocate_tensors()
 
     return interpreter
-
-
-
 
     # new_model = tf.keras.models.load_model(f'vision/models/{model_name}.keras')
     #
@@ -62,10 +48,6 @@ import urllib.request
 
 @st.cache_resource
 def prepare0():
-
-  # for i,model_url in enumerate(model_urls):
-  #   if not os.path.exists(model_paths[i]):
-  #       urllib.request.urlretrieve(model_url, model_paths[i])
   
   with open("github_releases_file_urls.txt") as f:
       model_urls = [line.strip() for line in f if line.strip()]
@@ -78,12 +60,9 @@ def prepare0():
     model_paths.append(path)
 
     if not os.path.exists(path):
-      st.write(f"Downloading {filename} ...")
       urllib.request.urlretrieve(url, path)
 
   return model_paths
-
-  #return model_urls
 
 @st.cache_data
 def prepare1(class_path):
@@ -113,7 +92,6 @@ print(os.getcwd())
 
 # model_file = 'yolov3_animals_uint8'
 # MODEL_PATH = f"tflite-models/yolov3-animals/{model_file}.tflite"
-CLASS_PATH = "data/animals_class_names.txt"
 
 model_files = [f for f in os.listdir('checkpoints') if f.endswith(".tflite")]
 
@@ -124,8 +102,7 @@ model_path='checkpoints/'+model_name
 interpreter=prepare(model_path)
 
 
-
-
+CLASS_PATH = "data/animals_class_names.txt"
 
 class_names,class_colors=prepare1(CLASS_PATH)
 
@@ -206,13 +183,23 @@ if uploaded_file is not None:
 
     SCORE_THRESHOLD = st.sidebar.slider(
         "Score threshold",
-        min_value=0.0,
+        min_value=0.1,
+        max_value=1.0,
+        value=0.5,
+        step=0.1
+    )
+
+    soft_nms_sigma = st.sidebar.slider(
+        "Soft sigma from none maximum supression",
+        min_value=0,
         max_value=1.0,
         value=0.5,
         step=0.25
     )
 
-    boxes, scores, classes, nums, anch_nums = yolo_nms(boxes, num_classes,SCORE_THRESHOLD)
+
+
+    boxes, scores, classes, nums, anch_nums = yolo_nms(boxes, num_classes,SCORE_THRESHOLD,soft_nms_sigma)
 
 
     # -----------------------------
