@@ -184,14 +184,14 @@ if uploaded_file is not None:
     SCORE_THRESHOLD = st.sidebar.slider(
         "Score threshold",
         min_value=0.1,
-        max_value=1.0,
+        max_value=0.9,
         value=0.5,
         step=0.1
     )
 
     soft_nms_sigma = st.sidebar.slider(
         "Soft sigma from none maximum supression",
-        min_value=0,
+        min_value=0.0,
         max_value=1.0,
         value=0.5,
         step=0.25
