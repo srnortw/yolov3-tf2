@@ -143,8 +143,8 @@ def setup_model():
       initial_learning_rate=FLAGS.learning_rate,#0.1,
       first_decay_steps=first_decay_steps,#376,
       t_mul=2.0,   # cycle durations: 1000, 2000, 4000...
-      m_mul=0.95,   # max LRs: 0.1, 0.09, 0.081... #0.9
-      alpha=0.03 # 0.05
+      m_mul=0.9,   # max LRs: 0.1, 0.09, 0.081... #0.9
+      alpha=0.02 # 0.05
       )
     else:
       lr_schedule=FLAGS.learning_rate

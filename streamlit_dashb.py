@@ -53,18 +53,37 @@ def prepare(model_path):
     # return new_model,unique_labels
 
 
-MODEL_URL = "https://github.com/srnortw/yolov3-tf2/releases/download/weights/yolov3_animals_uint8.tflite"
-MODEL_PATH = "checkpoints/yolov3_animals_uint8.tflite"
+# model_urls=open('git_releases_file_urls.txt').readlines()
+# model_paths=['checkpoints/'+ model_url.split('/')[-1] for model_url in model_urls]
+# MODEL_URL = "https://github.com/srnortw/yolov3-tf2/releases/download/weights/yolov3_animals_uint8.tflite"
+# MODEL_PATH = "checkpoints/yolov3_animals_uint8.tflite"
 
 import urllib.request
 
 @st.cache_resource
 def prepare0():
 
-    if not os.path.exists(MODEL_PATH):
-        urllib.request.urlretrieve(MODEL_URL, 'checkpoints/yolov3_animals_uint8.tflite')
+  # for i,model_url in enumerate(model_urls):
+  #   if not os.path.exists(model_paths[i]):
+  #       urllib.request.urlretrieve(model_url, model_paths[i])
+  
+  with open("git_releases_file_urls.txt") as f:
+      model_urls = [line.strip() for line in f if line.strip()]
 
-    return MODEL_PATH
+  model_paths = []
+
+  for url in model_urls:
+    filename = url.split("/")[-1]
+    path = os.path.join("checkpoints", filename)
+    model_paths.append(path)
+
+    if not os.path.exists(path):
+      st.write(f"Downloading {filename} ...")
+      urllib.request.urlretrieve(url, path)
+
+  return model_paths
+
+  #return model_urls
 
 @st.cache_data
 def prepare1(class_path):
