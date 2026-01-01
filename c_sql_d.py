@@ -340,7 +340,8 @@ if __name__=="__main__":
                     try:
                         class_id, x1, y1, x2, y2 = line.split()
                     except:
-                        print(f'it is empty text or remove empty row also text loc is {file_name}')
+                        print(f'it is empty text(there is no object) or remove empty rows also text loc is {file_name}')
+                        loc1_com += f'''('{id_map[base]}','0','0','0','0','0'),'''
                         break
                     loc1_com += f'''('{id_map[base]}','{class_id}','{x1}','{y1}','{x2}','{y2}'),'''
 

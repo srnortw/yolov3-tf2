@@ -278,13 +278,6 @@ def main(_argv):
     else:
         model_name='yolov3'
 
-    if FLAGS.transfer=='no_output':
-      limit=13
-    elif FLAGS.transfer=='fine_tune':
-      limit=69
-    else:
-      limit=0
-
     if FLAGS.mode == 'autograd_graph_tf':
         # Eager mode is great for debugging
         # Non eager graph mode is recommended for real training
@@ -391,7 +384,7 @@ def main(_argv):
             avg_val_loss.reset_state()
 
                       
-            if  epoch>limit:# epoch % 25 == 0:
+            if  epoch==FLAGS.epochs:# epoch % 25 == 0:
               model.save_weights('checkpoints/{}_{}_{}_{}.weights.h5'.format(model_name,dataset_name,epoch,FLAGS.transfer))
     else:                    
           
