@@ -11,6 +11,12 @@ import ai_edge_litert.interpreter as tflite
 import time
 import random
 
+# os.chdir('raspi3bp')
+# print(os.getcwd())
+from yolov3_tf2.models_raspi3bp import (
+    yolo_boxes_numpy as yolo_boxes,yolo_nms_numpy as yolo_nms,yolo_anchors,yolo_anchor_masks
+)
+
 
 # File uploader widget
 uploaded_file = st.file_uploader("Choose a file", type=["jpg", "jpeg", "png"])
@@ -104,6 +110,10 @@ interpreter=prepare(model_path)
 
 if model_name=='yolov3_construction_safety_objdet_train.tfrecord.gz_70_fine_tune.tflite':
   CLASS_PATH = "data/_darknet.labels"
+  npy=np.load("yolov3_tf2/anchor_construction_safety_objdet.npy")
+  print(npy)
+  yolo_anchors=npy/416
+
 else:
   CLASS_PATH = "data/animals_class_names.txt"
 
@@ -115,14 +125,6 @@ output_details = interpreter.get_output_details()
 INPUT_SIZE = 416
 
 num_classes = len(class_names)
-
-
-# os.chdir('raspi3bp')
-# print(os.getcwd())
-from yolov3_tf2.models_raspi3bp import (
-    yolo_boxes_numpy as yolo_boxes,yolo_nms_numpy as yolo_nms,yolo_anchors,yolo_anchor_masks
-)
-
 
 # current_dir = os.getcwd()
 # parent_dir = os.path.dirname(current_dir)
