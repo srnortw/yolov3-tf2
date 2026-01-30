@@ -14,7 +14,7 @@ import random
 # os.chdir('raspi3bp')
 # print(os.getcwd())
 from yolov3_tf2.models_raspi3bp import (
-    yolo_boxes_numpy as yolo_boxes,yolo_nms_numpy as yolo_nms,yolo_anchors,yolo_anchor_masks
+    yolo_boxes_numpy as yolo_boxes,yolo_nms_numpy as yolo_nms,yolo_anchors_d,yolo_anchor_masks
 )
 
 
@@ -116,6 +116,8 @@ if model_name=='yolov3_construction_safety_objdet_train.tfrecord.gz_70_fine_tune
 
 else:
   CLASS_PATH = "data/animals_class_names.txt"
+
+  yolo_anchors=yolo_anchors_d
 
 class_names,class_colors=prepare1(CLASS_PATH)
 
