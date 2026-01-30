@@ -102,7 +102,10 @@ model_path='checkpoints/'+model_name
 interpreter=prepare(model_path)
 
 
-CLASS_PATH = "data/animals_class_names.txt"
+if model_name=='yolov3_construction_safety_objdet_train.tfrecord.gz_70_fine_tune.tflite':
+  CLASS_PATH = "data/_darknet.labels"
+else:
+  CLASS_PATH = "data/animals_class_names.txt"
 
 class_names,class_colors=prepare1(CLASS_PATH)
 
