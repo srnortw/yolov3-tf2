@@ -128,7 +128,7 @@ def setup_model():
     # )
 
     if FLAGS.cosine_learning_decay_restarts:
-      training_size=1204#997#1080#638*80/100#1504
+      training_size=966#1204#997#1080#638*80/100#1504
 
       #training_size=448
 
@@ -137,14 +137,14 @@ def setup_model():
       from math import ceil
 
 
-      first_decay_steps=int(10*ceil(steps_per_epoch))
+      first_decay_steps=int(25*ceil(steps_per_epoch))
 
       lr_schedule = tf.keras.optimizers.schedules.CosineDecayRestarts(
       initial_learning_rate=FLAGS.learning_rate,#0.1,
       first_decay_steps=first_decay_steps,#376,
-      t_mul=2.0,   # cycle durations: 1000, 2000, 4000...
-      m_mul=0.9,   # max LRs: 0.1, 0.09, 0.081... #0.9
-      alpha=0.02 # 0.05
+      t_mul=1.8,   # cycle durations: 1000, 2000, 4000...
+      m_mul=0.8,#0.9   # max LRs: 0.1, 0.09, 0.081... #0.9
+      alpha=0.001#0.02 # 0.05
       )
     else:
       lr_schedule=FLAGS.learning_rate
@@ -213,7 +213,7 @@ def main(_argv):
             FLAGS.dataset, FLAGS.classes, FLAGS.size)
     else:
         train_dataset = dataset.load_fake_dataset()
-    train_dataset = train_dataset.shuffle(buffer_size=602)#540#498
+    train_dataset = train_dataset.shuffle(buffer_size=483)#602#540#498
 
 
     # for v in train_dataset.take(1):
