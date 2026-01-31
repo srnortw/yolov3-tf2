@@ -241,7 +241,7 @@ if uploaded_file is not None:
                     else:
                       color= (255,255,255)
 
-                    #y1=max(10,y1-5)
+                    y1=max(10,y1-5)
 
                     cv2.putText(img, f"{label} {score:.2f}", (x1,y1-5),
                                 cv2.FONT_HERSHEY_SIMPLEX, font_scale, (255 - color[0], 255 - color[1], 255 - color[2]),
