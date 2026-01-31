@@ -3,7 +3,7 @@ import numpy as np
 # yolo_anchors = np.array([(10, 13), (16, 30), (33, 23), (30, 61), (62, 45),
 #                          (59, 119), (116, 90), (156, 198), (373, 326)],
 #                         np.float32) / 416
-def pick_anchors(name='animals',res=416):
+def pick_anchors(name='default',res=416):
   if name=='construction safety':
     npy=np.load("yolov3_tf2/anchor_construction_safety_objdet.npy")
     yolo_anchors=npy/res
@@ -15,7 +15,7 @@ def pick_anchors(name='animals',res=416):
     return yolo_anchors
 
 
-yolo_anchors = pick_anchors()
+yolo_anchors = pick_anchors(res=416)
 
 
 yolo_anchor_masks = np.array([[6, 7, 8], [3, 4, 5], [0, 1, 2]])
@@ -349,4 +349,7 @@ def yolo_nms_numpy(outputs, classes,score_thresh=0.5,sigma=0.5):
 
 
     return boxes_out, scores_out, classes_out,d,anchors_nums_out
-    
+
+
+
+

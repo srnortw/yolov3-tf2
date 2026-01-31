@@ -14,19 +14,43 @@ import numpy as np
 
 import ai_edge_litert.interpreter as tflite
 from yolov3_tf2.models_raspi3bp import (
-    yolo_boxes_numpy as yolo_boxes,yolo_nms_numpy as yolo_nms,yolo_anchors,yolo_anchor_masks
+    yolo_boxes_numpy as yolo_boxes,yolo_nms_numpy as yolo_nms,pick_anchors,yolo_anchor_masks
 )
+from yolov3_tf2.utils import draw_outputs_new as draw_outputs
+
 import time
 import random
 
+
+import os 
+import urllib.request
+
+
+# -----------------------------
+# Download Weights From Github Releases
+# -----------------------------
+
+with open("github_releases_file_urls.txt") as f:
+    model_urls = [line.strip() for line in f if line.strip()]
+
+model_paths = []
+
+for url in model_urls:
+  filename = url.split("/")[-1]
+  path = os.path.join("checkpoints", filename)
+  model_paths.append(path)
+
+  if not os.path.exists(path):
+    urllib.request.urlretrieve(url, path)
+
+
+
 model_file='yolov3_animals_uint8'
 MODEL_PATH = f"checkpoints/{model_file}.tflite"
-CLASS_PATH = "data/animals_class_names.txt"
+
 
 SCORE_THRESHOLD = 0.5
-
-
-
+INPUT_SIZE = 416
 # -----------------------------
 # Load model and labels
 # -----------------------------
@@ -35,6 +59,14 @@ interpreter.allocate_tensors()
 
 input_details = interpreter.get_input_details()
 output_details = interpreter.get_output_details()
+
+if model_file.startswith("yolov3_animals"):
+  CLASS_PATH = "data/animals_class_names.txt"
+  yolo_anchors=pick_anchors(res=INPUT_SIZE)
+elif model_file.startswith("yolov3_construction_safety"):
+  CLASS_PATH = "data/_darknet.labels"
+  yolo_anchors=pick_anchors('construction_safety',res=INPUT_SIZE)
+
 
 class_names = [c.strip() for c in open(CLASS_PATH).readlines()]
 
@@ -47,7 +79,6 @@ num_classes=len(class_names)
 random.seed(42)  # ensures same colors every run
 class_colors = {name: tuple([random.randint(0, 255) for _ in range(3)]) for name in class_names}
 
-INPUT_SIZE = 416
 WIDTH = 640
 HEIGHT = 480
 
@@ -153,25 +184,25 @@ while True:
     # -----------------------------
     # Draw outputs
     # -----------------------------
-    def draw_outputs(img, boxes, scores, classes, nums, class_names,class_colors,anch_nums):
-        img_h, img_w = img.shape[:2]
-        wh = np.array([img_w, img_h, img_w, img_h])
+    # def draw_outputs(img, boxes, scores, classes, nums, class_names,class_colors,anch_nums):
+    #     img_h, img_w = img.shape[:2]
+    #     wh = np.array([img_w, img_h, img_w, img_h])
         
-        batch=len(nums)
-        for b in range(batch):
-            for i in range(nums[b]):
-                if scores[b][i] >= SCORE_THRESHOLD:
+    #     batch=len(nums)
+    #     for b in range(batch):
+    #         for i in range(nums[b]):
+    #             if scores[b][i] >= SCORE_THRESHOLD:
                     
-                    print(boxes[b][i],anch_nums[b][i])
-                    box = boxes[b][i] * wh
-                    x1, y1, x2, y2 = box.astype(np.int32)
-                    label = class_names[int(classes[b][i])]
-                    score = scores[b][i]
-                    color = class_colors[label]  # use pre-assigned color
-                    cv2.rectangle(img, (x1, y1), (x2, y2),color, 2)#(255, 0, 0)
-                    cv2.putText(img, f"{label} {score:.2f}", (x1, y1 - 5),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.5,(255-color[0],255-color[1],255-color[2]), 2)#(0, 0, 255)
-        return img
+    #                 print(boxes[b][i],anch_nums[b][i])
+    #                 box = boxes[b][i] * wh
+    #                 x1, y1, x2, y2 = box.astype(np.int32)
+    #                 label = class_names[int(classes[b][i])]
+    #                 score = scores[b][i]
+    #                 color = class_colors[label]  # use pre-assigned color
+    #                 cv2.rectangle(img, (x1, y1), (x2, y2),color, 2)#(255, 0, 0)
+    #                 cv2.putText(img, f"{label} {score:.2f}", (x1, y1 - 5),
+    #                             cv2.FONT_HERSHEY_SIMPLEX, 0.5,(255-color[0],255-color[1],255-color[2]), 2)#(0, 0, 255)
+    #     return img
         
     # import pdb
     # pdb.set_trace()
