@@ -205,19 +205,17 @@ if uploaded_file is not None:
     boxes, scores, classes, nums, anch_nums = yolo_nms(boxes, num_classes,SCORE_THRESHOLD,soft_nms_sigma)
 
 
-    # -----------------------------
-    # Draw outputs
-    # -----------------------------
+    # # -----------------------------
+    # # Draw outputs
+    # # -----------------------------
     def draw_outputs(img, boxes, scores, classes, nums, class_names, class_colors, anch_nums):
-        img_h, img_w = img.shape[:2]
 
+        img_h, img_w = img.shape[:2]
         ref = min(img_h, img_w)
 
-        thickness_box = max(1, int(ref / 200))
-
-        font_scale = ref / 600
-
-        thickness_text  = max(1, int(ref / 400))
+        thickness_box  = max(1, int(ref / 200))
+        thickness_text = max(1, int(ref / 400))
+        font_scale     = max(0.4, ref / 600)
 
         wh = np.array([img_w, img_h, img_w, img_h])
 
@@ -232,16 +230,18 @@ if uploaded_file is not None:
                     score = scores[b][i]
                     anch_id=anch_nums[b][i]
                     print(score,box,label,anch_id)
+
                     color = class_colors[label]  # use pre-assigned color
                     cv2.rectangle(img, (x1, y1), (x2, y2), color,thickness_box)  # (255, 0, 0)
-                    cv2.putText(img, f"{label} {score:.2f}", (x1, y1-5),
+
+                    y1=max(10,y1-5)
+
+                    cv2.putText(img, f"{label} {score:.2f}", (x1,y1),
                                 cv2.FONT_HERSHEY_SIMPLEX, font_scale, (255 - color[0], 255 - color[1], 255 - color[2]),
-                                thickness_text)  # (0, 0, 255)
+                                thickness_text,cv2.LINE_AA)  # (0, 0, 255)
 
         #2 0.5 2
-
         return img
-
 
     # import pdb
     # pdb.set_trace()
