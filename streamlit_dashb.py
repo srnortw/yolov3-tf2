@@ -14,7 +14,7 @@ import random
 # os.chdir('raspi3bp')
 # print(os.getcwd())
 from yolov3_tf2.models_raspi3bp import (
-    yolo_boxes_numpy as yolo_boxes,yolo_nms_numpy as yolo_nms,pick_anchors,yolo_anchor_masks,pick_anchors
+    yolo_boxes_numpy as yolo_boxes,yolo_nms_numpy as yolo_nms,pick_anchors,yolo_anchor_masks
 )
 
 
