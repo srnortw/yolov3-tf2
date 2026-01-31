@@ -45,7 +45,7 @@ for url in model_urls:
 
 
 
-model_file='yolov3_animals_uint8'
+model_file='yolov3_construction_safety_objdet_train.tfrecord.gz_70_fine_tune'
 MODEL_PATH = f"checkpoints/{model_file}.tflite"
 
 
@@ -66,6 +66,7 @@ if model_file.startswith("yolov3_animals"):
 elif model_file.startswith("yolov3_construction_safety"):
   CLASS_PATH = "data/_darknet.labels"
   yolo_anchors=pick_anchors('construction_safety',res=INPUT_SIZE)
+
 
 
 class_names = [c.strip() for c in open(CLASS_PATH).readlines()]
@@ -177,35 +178,7 @@ while True:
 
 
     boxes, scores, classes, nums,anch_nums =yolo_nms(boxes,num_classes)
-
-    # import pdb
-    # pdb.set_trace()
-
-    # -----------------------------
-    # Draw outputs
-    # -----------------------------
-    # def draw_outputs(img, boxes, scores, classes, nums, class_names,class_colors,anch_nums):
-    #     img_h, img_w = img.shape[:2]
-    #     wh = np.array([img_w, img_h, img_w, img_h])
         
-    #     batch=len(nums)
-    #     for b in range(batch):
-    #         for i in range(nums[b]):
-    #             if scores[b][i] >= SCORE_THRESHOLD:
-                    
-    #                 print(boxes[b][i],anch_nums[b][i])
-    #                 box = boxes[b][i] * wh
-    #                 x1, y1, x2, y2 = box.astype(np.int32)
-    #                 label = class_names[int(classes[b][i])]
-    #                 score = scores[b][i]
-    #                 color = class_colors[label]  # use pre-assigned color
-    #                 cv2.rectangle(img, (x1, y1), (x2, y2),color, 2)#(255, 0, 0)
-    #                 cv2.putText(img, f"{label} {score:.2f}", (x1, y1 - 5),
-    #                             cv2.FONT_HERSHEY_SIMPLEX, 0.5,(255-color[0],255-color[1],255-color[2]), 2)#(0, 0, 255)
-    #     return img
-        
-    # import pdb
-    # pdb.set_trace()
     image_out = draw_outputs(image, boxes, scores, classes, nums, class_names,class_colors,anch_nums,SCORE_THRESHOLD)    
     
     
