@@ -1,5 +1,5 @@
 import numpy as np
-
+import cv2
 # yolo_anchors = np.array([(10, 13), (16, 30), (33, 23), (30, 61), (62, 45),
 #                          (59, 119), (116, 90), (156, 198), (373, 326)],
 #                         np.float32) / 416
@@ -350,6 +350,47 @@ def yolo_nms_numpy(outputs, classes,score_thresh=0.5,sigma=0.5):
 
     return boxes_out, scores_out, classes_out,d,anchors_nums_out
 
+  # # -----------------------------
+    # # Draw outputs
+    # # -----------------------------
+def draw_outputs(img, boxes, scores, classes, nums, class_names, class_colors, anch_nums,SCORE_THRESHOLD):
+  img_h, img_w = img.shape[:2]
+  ref = min(img_h, img_w)
 
+  thickness_box  = max(1, int(ref / 200))
+  thickness_text = max(1, int(ref / 400))
+  font_scale     = max(0.4, ref / 600)
+
+  wh = np.array([img_w, img_h, img_w, img_h])
+
+  batch = len(nums)
+  for b in range(batch):
+    for i in range(nums[b]):
+      if scores[b][i] >= SCORE_THRESHOLD:
+        #print(boxes[b][i], anch_nums[b][i])
+        box = boxes[b][i] * wh
+        x1, y1, x2, y2 = box.astype(np.int32)
+        label = class_names[int(classes[b][i])]
+        score = scores[b][i]
+        anch_id=anch_nums[b][i]
+        print(score,box,label,anch_id)
+
+        color = class_colors[label]  # use pre-assigned color
+        cv2.rectangle(img, (x1, y1), (x2, y2), color,thickness_box)  # (255, 0, 0)
+
+        brightness = 0.299*color[2] + 0.587*color[1] + 0.114*color[0]
+
+        if brightness >150:
+          color= (0,0,0)
+        else:
+          color= (255,255,255)
+          y1=max(10,y1-5)
+
+          cv2.putText(img, f"{label} {score:.2f}", (x1,y1-5),
+                      cv2.FONT_HERSHEY_SIMPLEX, font_scale, (255 - color[0], 255 - color[1], 255 - color[2]),
+                      thickness_text,cv2.LINE_AA)  # (0, 0, 255)
+
+        #2 0.5 2
+  return img
 
 

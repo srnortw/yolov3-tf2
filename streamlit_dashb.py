@@ -14,10 +14,8 @@ import random
 # os.chdir('raspi3bp')
 # print(os.getcwd())
 from yolov3_tf2.models_raspi3bp import (
-    yolo_boxes_numpy as yolo_boxes,yolo_nms_numpy as yolo_nms,pick_anchors,yolo_anchor_masks
+    yolo_boxes_numpy as yolo_boxes,yolo_nms_numpy as yolo_nms,pick_anchors,yolo_anchor_masks,draw_outputs
 )
-
-from yolov3_tf2.utils.draw_outputs_new as draw_outputs
 
 # File uploader widget
 uploaded_file = st.file_uploader("Choose a file", type=["jpg", "jpeg", "png"])
@@ -214,7 +212,7 @@ if uploaded_file is not None:
     # SCORE_THRESHOLD = 0.5
 
 
-    image_out = draw_outputs(image, boxes, scores, classes, nums, class_names, class_colors, anch_nums)
+    image_out = draw_outputs(image, boxes, scores, classes, nums, class_names, class_colors, anch_nums,SCORE_THRESHOLD)
 
     right, left = st.columns(2)
 
