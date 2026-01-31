@@ -16,7 +16,7 @@ import ai_edge_litert.interpreter as tflite
 from yolov3_tf2.models_raspi3bp import (
     yolo_boxes_numpy as yolo_boxes,yolo_nms_numpy as yolo_nms,pick_anchors,yolo_anchor_masks
 )
-from yolov3_tf2.utils import draw_outputs_new as draw_outputs
+from yolov3_tf2.utils.draw_outputs_new as draw_outputs
 
 import time
 import random
