@@ -14,7 +14,7 @@ import random
 # os.chdir('raspi3bp')
 # print(os.getcwd())
 from yolov3_tf2.models_raspi3bp import (
-    yolo_boxes_numpy as yolo_boxes,yolo_nms_numpy as yolo_nms,yolo_anchors as yolo_anchors_d,yolo_anchor_masks
+    yolo_boxes_numpy as yolo_boxes,yolo_nms_numpy as yolo_nms,pick_anchors,yolo_anchor_masks,pick_anchors
 )
 
 
@@ -108,23 +108,21 @@ model_path='checkpoints/'+model_name
 interpreter=prepare(model_path)
 
 
-if model_name=='yolov3_construction_safety_objdet_train.tfrecord.gz_70_fine_tune.tflite':
-  CLASS_PATH = "data/_darknet.labels"
-  npy=np.load("yolov3_tf2/anchor_construction_safety_objdet.npy")
-  print(npy)
-  yolo_anchors=npy/416
+INPUT_SIZE = 416
 
+#if model_name=='yolov3_construction_safety_objdet_train.tfrecord.gz_70_fine_tune.tflite':
+if model_name.startswith('yolov3_construction_safety'):
+  CLASS_PATH = "data/_darknet.labels"
+  yolo_anchors=pick_anchors(name='construstion_safety',res=INPUT_SIZE)
 else:
   CLASS_PATH = "data/animals_class_names.txt"
-
-  yolo_anchors=yolo_anchors_d
+  yolo_anchors=pick_anchors(res=INPUT_SIZE)
 
 class_names,class_colors=prepare1(CLASS_PATH)
 
 input_details = interpreter.get_input_details()
 output_details = interpreter.get_output_details()
 
-INPUT_SIZE = 416
 
 num_classes = len(class_names)
 
@@ -204,8 +202,6 @@ if uploaded_file is not None:
         step=0.25
     )
 
-
-
     boxes, scores, classes, nums, anch_nums = yolo_nms(boxes, num_classes,SCORE_THRESHOLD,soft_nms_sigma)
 
 
@@ -214,6 +210,15 @@ if uploaded_file is not None:
     # -----------------------------
     def draw_outputs(img, boxes, scores, classes, nums, class_names, class_colors, anch_nums):
         img_h, img_w = img.shape[:2]
+
+        ref = min(img_h, img_w)
+
+        thickness_box = max(1, int(ref / 200))
+
+        font_scale = ref / 600
+
+        thickness_text  = max(1, int(ref / 400))
+
         wh = np.array([img_w, img_h, img_w, img_h])
 
         batch = len(nums)
@@ -228,10 +233,12 @@ if uploaded_file is not None:
                     anch_id=anch_nums[b][i]
                     print(score,box,label,anch_id)
                     color = class_colors[label]  # use pre-assigned color
-                    cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)  # (255, 0, 0)
+                    cv2.rectangle(img, (x1, y1), (x2, y2), color,thickness_box)  # (255, 0, 0)
                     cv2.putText(img, f"{label} {score:.2f}", (x1, y1-5),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255 - color[0], 255 - color[1], 255 - color[2]),
-                                2)  # (0, 0, 255)
+                                cv2.FONT_HERSHEY_SIMPLEX, font_scale, (255 - color[0], 255 - color[1], 255 - color[2]),
+                                thickness_text)  # (0, 0, 255)
+
+        #2 0.5 2
 
         return img
 
