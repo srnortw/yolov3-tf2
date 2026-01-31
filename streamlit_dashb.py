@@ -234,6 +234,13 @@ if uploaded_file is not None:
                     color = class_colors[label]  # use pre-assigned color
                     cv2.rectangle(img, (x1, y1), (x2, y2), color,thickness_box)  # (255, 0, 0)
 
+                    brightness = 0.299*color[2] + 0.587*color[1] + 0.114*color[0]
+
+                    if brightness >150:
+                      color= (0,0,0)
+                    else:
+                      color= (255,255,255)
+
                     y1=max(10,y1-5)
 
                     cv2.putText(img, f"{label} {score:.2f}", (x1,y1),
