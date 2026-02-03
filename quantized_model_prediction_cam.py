@@ -80,14 +80,15 @@ num_classes=len(class_names)
 random.seed(42)  # ensures same colors every run
 class_colors = {name: tuple([random.randint(0, 255) for _ in range(3)]) for name in class_names}
 
-WIDTH = 640
-HEIGHT = 480
+WIDTH = 1920#640
+HEIGHT = 1080#480
 
 cmd = [
     "rpicam-vid",
     "--timeout", "0",
     "--inline",
     "--framerate", "30",
+    "--rotation","180",
     "--width", str(WIDTH),
     "--height", str(HEIGHT),
     "--codec", "yuv420",   # IMPORTANT: raw YUV, no MJPEG
@@ -120,6 +121,7 @@ while True:
     # Convert BGR to RGB
     image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     input_image = cv2.resize(image_rgb, (INPUT_SIZE, INPUT_SIZE))
+    #input_image[:,:,2] =input_image[:,:,2] * 0.6 # for avoiding ir
     input_data = np.expand_dims(input_image, 0).astype(np.uint8) #/ 255.0
 
     
