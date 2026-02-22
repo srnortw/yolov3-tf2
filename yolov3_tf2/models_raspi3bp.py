@@ -4,7 +4,7 @@ import cv2
 #                          (59, 119), (116, 90), (156, 198), (373, 326)],
 #                         np.float32) / 416
 def pick_anchors(name='default',res=416):
-  if name=='construction safety':
+  if name=='construction_safety':
     npy=np.load("yolov3_tf2/anchor_construction_safety_objdet.npy")
     yolo_anchors=npy/res
     return yolo_anchors
