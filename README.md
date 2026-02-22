@@ -1,4 +1,4 @@
-# 🚀 YOLOv3-TF2 Extended Pipeline
+# YOLOv3-TF2 Extended Pipeline
 **An End-to-End Research, Training, and Edge Deployment Ecosystem**
 
 [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_svg.svg)](https://test-yolov3-tf2-mkmmq7q8mm7d28euvbak7f.streamlit.app/)
@@ -9,7 +9,7 @@ This project takes a standard YOLOv3 implementation and transforms it into a ful
 
 ---
 
-## 👑 The Commander: `yolov3-tf2.ipynb`
+## `yolov3-tf2.ipynb`
 
 
 The heart and brain of this entire project is the **`yolov3-tf2.ipynb`** Google Colab notebook. It acts as the central orchestrator for the entire workflow. Instead of running scripts manually, this notebook automates the end-to-end experiment lifecycle:
@@ -29,10 +29,10 @@ Triggered by the notebook, this script handles the ingestion of ZIP datasets con
 
 ### 2. Advanced Data Preprocessing (`vision_prep.py`)
 This script builds a generator to create a `tf.dataset` with ragged tensors for flexible outputs. 
-* **Statistical Splitting (Experimental):** Computes histogram moments and applies Z-score normalization. It calculates the correlation matrix of RGB histograms (pixel-wise and sample-wise) and performs K-Means clustering (centroid=1, visualized via PCA). The closest samples to the centroid are assigned to CV/Test, while the rest go to Train/Train-CV. *(Note: This experimental approach caused some Data Mismatch errors, so default random splitting is also supported).*
+* **Statistical Splitting (Experimental):** Calculates the correlation matrix of batched RGB histograms (divided by 255 and pixel-wise(Z-score normalization)) and performs K-Means clustering (centroid=1, visualized via PCA). The closest samples to the centroid are assigned to CV/Test, while the rest go to Train/Train-CV. *(Note: This experimental approach caused some Data Mismatch errors, so default random splitting is also supported).*
 * **Anchor Optimization:** Calculates optimal prior widths for the specific training dataset and compares their average IoU against the original YOLOv3 paper anchors.
-* **Smart Image Processing:** Applies dataset-specific filters based on batch size and normalized histogram moments, including Histogram Equalization, Gamma Correction, Median Blur, and Bilateral Filtering (to avoid blurring crucial bounding box edges).
-* **Serialization:** Batches the data and serializes it into GZIP-compressed TFRecords (train, traincv, cv, test).
+* **Smart Image Processing:** This takes Z-score normalizated batched histogram moments.Applies dataset-specific filters based on batch size and normalized histogram moments, including Histogram Equalization, Gamma Correction, Median Blur, and Bilateral Filtering (to avoid blurring crucial bounding box edges).
+* **Serialization:** Serializes it into GZIP-compressed TFRecords (train, traincv, cv, test).
 
 ### 3. Custom Training Loop (`train.py`)
 Bypasses standard Keras fitting for ultimate control, utilizing autograd in graph mode for flexible training.
