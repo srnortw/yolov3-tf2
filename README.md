@@ -1,160 +1,68 @@
-### Testing on the streamlit:
-https://test-yolov3-tf2-mkmmq7q8mm7d28euvbak7f.streamlit.app/
+# 🚀 YOLOv3-TF2 Extended Pipeline
+**An End-to-End Research, Training, and Edge Deployment Ecosystem**
 
-# YOLOv3-TF2 Extended Pipeline
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_svg.svg)](https://test-yolov3-tf2-mkmmq7q8mm7d28euvbak7f.streamlit.app/)
 
-An extended and research-oriented implementation of YOLOv3 in TensorFlow 2,
-including a complete data engineering pipeline, statistical dataset analysis,
-optimized training procedure, evaluation tooling, and edge deployment on Raspberry Pi.
+This project takes a standard YOLOv3 implementation and transforms it into a full-scale MLOps pipeline. It covers everything from SQL-based data ingestion and statistical preprocessing to custom graph-mode training, evaluation via FiftyOne, and INT8 quantized edge deployment on a Raspberry Pi 3B+.
 
----
-
-## Key Features
-
-- SQL-based dataset ingestion (PostgreSQL, optional MongoDB support)
-- Statistical dataset analysis and clustering-based splitting
-- Anchor prior optimization with IoU comparison
-- TFRecord generation with GZIP compression
-- Custom training loop with cosine learning rate restarts
-- Stateless augmentation for reproducibility
-- Multiscale training (YOLOv3 paper-compliant)
-- Vectorized Non-Maximum Suppression (NMS)
-- FiftyOne integration for evaluation and PR curves
-- Full INT8 TFLite quantization
-- Raspberry Pi 3B+ edge deployment
-- Streamlit-based inference dashboard
-- End-to-end Google Colab workflow notebook
+*Note: This project was originally forked from [zzh8829/yolov3-tf2](https://github.com/zzh8829/yolov3-tf2) and heavily extended to include a complete data engineering and edge inference workflow.*
 
 ---
 
-## System Architecture
+## 👑 The Commander: `yolov3-tf2.ipynb`
 
-1. Dataset ingestion and SQL storage  
-2. Statistical preprocessing and dataset splitting  
-3. TFRecord serialization  
-4. Model training  
-5. Evaluation and visualization  
-6. Edge deployment (TFLite + Raspberry Pi)
 
----
+The heart and brain of this entire project is the **`yolov3-tf2.ipynb`** Google Colab notebook. It acts as the central orchestrator for the entire workflow. Instead of running scripts manually, this notebook automates the end-to-end experiment lifecycle:
 
-## Dataset Pipeline
+1. **Dataset Acquisition:** Automatically pulls datasets directly from Roboflow.
+2. **Pipeline Execution:** Sequentially triggers the core modules: `c_sql_d.py` $\rightarrow$ `vision_prep.py` $\rightarrow$ `train.py` $\rightarrow$ `gtruth_pred_for_fiftyone.py` $\rightarrow$ `export_tflite.py`.
+3. **Evaluation Integration:** Directly embeds **FiftyOne** within the notebook environment (without breaking dependencies) to plot per-class PR curves and visually compare predicted vs. ground-truth bounding boxes.
 
-### c_sql_d.py
-
-- Accepts ZIP datasets containing images and annotations
-- Stores metadata in structured SQL tables
-- Supports PostgreSQL (MongoDB extension optional)
-
-### vision_prep.py
-
-- Extracts ZIP datasets
-- Converts bounding boxes to (xmin, ymin, xmax, ymax)
-- Computes histogram moments
-- Applies Z-score normalization
-- Computes correlation matrix of rgb histograms
-- Performs KMeans clustering
-- Splits dataset into Train / Train-CV / CV / Test( there are specific default random splitting option and k means version(this is just expiremental not that good.It causes missclassified data error i think)
-- Computes optimized anchor priors
-- Compares average IoU with original YOLOv3 anchors
-- Applies image preprocessing:(it uses batch size and normalized histogram moments for the custom filtering (this is experimental too))
-  - Histogram equalization
-  - Gamma correction
-  - Median blur
-  - Bilateral filtering
-- Serializes dataset to GZIP-compressed TFRecords
+By centralizing the execution here, the project becomes a fully reproducible, cloud-ready MLOps environment.
 
 ---
 
-## Training
+## 🔬 Deep Dive: The Underlying Modules
 
-### train.py
+### 1. Data Ingestion & Storage (`c_sql_d.py`)
+Triggered by the notebook, this script handles the ingestion of ZIP datasets containing images and ground-truth annotations. It routes metadata into a structured PostgreSQL database (with optional MongoDB NoSQL support), organizing it into specific tables for classes, images, and object instances.
 
-- Custom TensorFlow 2 training loop (graph mode)
-- Cosine learning rate decay with restarts (batch-wise)
-- Multiscale training (resolution changes every 10 batches)
-- Stateless augmentation:
-  - Horizontal flip
-  - Conditional vertical flip
-  - Brightness / Contrast / Saturation / Hue adjustments
+### 2. Advanced Data Preprocessing (`vision_prep.py`)
+This script builds a generator to create a `tf.dataset` with ragged tensors for flexible outputs. 
+* **Statistical Splitting (Experimental):** Computes histogram moments and applies Z-score normalization. It calculates the correlation matrix of RGB histograms (pixel-wise and sample-wise) and performs K-Means clustering (centroid=1, visualized via PCA). The closest samples to the centroid are assigned to CV/Test, while the rest go to Train/Train-CV. *(Note: This experimental approach caused some Data Mismatch errors, so default random splitting is also supported).*
+* **Anchor Optimization:** Calculates optimal prior widths for the specific training dataset and compares their average IoU against the original YOLOv3 paper anchors.
+* **Smart Image Processing:** Applies dataset-specific filters based on batch size and normalized histogram moments, including Histogram Equalization, Gamma Correction, Median Blur, and Bilateral Filtering (to avoid blurring crucial bounding box edges).
+* **Serialization:** Batches the data and serializes it into GZIP-compressed TFRecords (train, traincv, cv, test).
 
----
+### 3. Custom Training Loop (`train.py`)
+Bypasses standard Keras fitting for ultimate control, utilizing autograd in graph mode for flexible training.
+* **Cosine Learning Rate Restarts:** LR decays and restarts every batch to help the optimizer find global minima instead of getting stuck in local minima.
+* **Stateless Augmentation:** Uses `tf.image.stateless` with specific seeds for reproducible augmentations (left/right flip, conditional upside-down flip based on dataset context, contrast, brightness, saturation, hue). These augmentations shift dynamically every epoch.
+* **Multiscale Training:** True to the original YOLOv3 paper, the input resolution automatically changes every 10 batches.
 
-## Google Colab Workflow
+### 4. Core Model & Dataset Utilities
+* **`yolov3_tf2/dataset.py`:** Efficiently loads the GZIP-compressed TFRecord files.
+* **`yolov3_tf2/models.py`:** Loads the optimized prior widths via `.npy` files outputted by `vision_prep.py`. It features a **vectorized NMS function** (detecting across the whole batch) and attaches an **anchor ID to each detection**. *Insight: Tracking anchor IDs helps analyze network behavior, e.g., higher IDs typically correspond to tiny or far-away objects.*
 
-### yolov3-tf2.ipynb
+### 5. Ground Truth Tracking (`gtruth_pred_for_fiftyone.py`)
+Outputs images, detection `.txt` files, and ground-truth `.txt` files for the train-cv, cv, and test splits. This prepares the data perfectly for the FiftyOne visualization triggered in the main notebook. *(Marked for future reliability updates).*
 
-End-to-end experimental notebook that:
+### 6. Edge Deployment & Quantization
+Getting a heavy model onto an edge device required strict optimization:
+* **`export_tflite.py`:** Converts the model using full INT8 quantization via a representative dataset to ensure the model learns the quantization bounds accurately. The graph is cut off at the `yolo_loss` function; heavy box conversion (xmin, ymin, xmax, ymax) and NMS are kept outside the graph, as including them degrades quantization quality.
+* **`quantized_model_prediction_cam.py`:** Uses `ai-edge-litert` to run real-time camera object detection. 
+* **`models/models_raspi3bp.py`:** The Raspberry Pi brain. Uses pure NumPy for YOLO box calculations and NMS, and OpenCV for drawing bounding boxes. 
+* **Hardware Constraints:** Currently running on the newest OS for the Raspberry Pi 3B+. Due to the heavy nature of YOLOv3 and CPU constraints, it runs at a highly limited **~0.13 FPS (1 frame every 7.5 seconds)**. 
 
-- Pulls dataset from Roboflow
-- Executes full pipeline:
-  - c_sql_d.py
-  - vision_prep.py
-  - train.py
-  - gtruth_pred_for_fiftyone.py
-  - export_tflite.py
-- Integrates FiftyOne for:
-  - PR curve visualization
-  - Bounding box inspection
-  - Ground truth vs prediction comparison
-
-Enables reproducible experimentation and cloud-based training.
-
----
-
-## Evaluation
-
-### FiftyOne Integration
-
-- Exports predictions and ground truths
-- Visualizes bounding boxes and per-class PR curves
-- Enables interactive dataset inspection
-
-
-
-- African Animals Dataset : 0.6 mAP(traincv-cv-test,80-10-5-5,default random splitting) : https://www.kaggle.com/datasets/biancaferreira/african-wildlife
-- Construction Safety Dataset : 0.35 mAP(traincv-cv-test,80-10-5-5,default random splitting) : https://universe.roboflow.com/roboflow-100/construction-safety-gsnvb
-  
+### 7. Interactive UI (`streamlit_dashb.py`)
+A user-friendly dashboard built with Streamlit that imports functions from `models_raspi3bp.py`. Users can upload images for inference and dynamically adjust the **Score Threshold** and **NMS Sigma** via sliders.
 
 ---
 
-## Edge Deployment
+## 📊 Datasets & Benchmarks
+The pipeline was tested using an 80-10-5-5 split (train, train-cv, cv, test) utilizing the default random splitting method:
 
-### export_tflite.py
-
-- Full INT8 quantization
-- Representative dataset calibration
-- Lightweight post-processing outside model graph
-
-### Raspberry Pi Inference
-
-- NumPy-based bounding box processing
-- NMS implemented in NumPy
-- OpenCV visualization
-- Current performance: ~0.13 FPS (Raspberry Pi 3B+ CPU constraint)
-
----
-
-## Streamlit Dashboard
-
-- Upload image for inference
-- Adjustable confidence threshold
-- Adjustable NMS sigma
-- Visualization of detections
-
----
-
-## Future Improvements
-
-- YOLOv3-Tiny edge optimization
-- Structured benchmarking
-- Automated anchor ablation study
-- Improved evaluation export reliability
-- Embedded system profiling
-
----
-
-## Acknowledgements
-
-Based on zzh8829/yolov3-tf2  
-Extended and engineered by Serkan Srgvc
+| Dataset | mAP | Link |
+| :--- | :--- | :--- |
+| **African Wildlife** | 0.60 | [Kaggle](https://www.kaggle.com/datasets/biancaferreira/african-wildlife) |
+| **Construction Safety** | 0.35 | [Roboflow Universe](https://universe.roboflow.com/roboflow-100/construction-safety-gsnvb) |
