@@ -1,7 +1,7 @@
 # YOLOv3-TF2 Extended Pipeline
 **An End-to-End Research, Training, and Edge Deployment Ecosystem**
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_svg.svg)](https://test-yolov3-tf2-mkmmq7q8mm7d28euvbak7f.streamlit.app/)
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://test-yolov3-tf2-mkmmq7q8mm7d28euvbak7f.streamlit.app/)
 
 This project takes a standard YOLOv3 implementation and transforms it into a full-scale MLOps pipeline. It covers everything from SQL-based data ingestion and statistical preprocessing to custom graph-mode training, evaluation via FiftyOne, and INT8 quantized edge deployment on a Raspberry Pi 3B+.
 
