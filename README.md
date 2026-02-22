@@ -29,7 +29,7 @@ Triggered by the notebook, this script handles the ingestion of ZIP datasets con
 
 ### 2. Advanced Data Preprocessing (`vision_prep.py`)
 This script builds a generator to create a `tf.dataset` with ragged tensors for flexible outputs. 
-* **Statistical Splitting (Experimental):** Calculates the correlation matrix of batched RGB histograms (divided by 255 and pixel-wise(Z-score normalization)) and performs K-Means clustering (centroid=1, visualized via PCA). The closest samples to the centroid are assigned to CV/Test, while the rest go to Train/Train-CV. *(Note: This experimental approach caused some Data Mismatch errors, so default random splitting is also supported).*
+* **Statistical Splitting (Experimental):** Calculates the correlation matrix of batched RGB histograms (divided by 255 then applying Z-score normalization) and performs K-Means clustering (centroid=1, visualized via PCA). The closest samples to the centroid are assigned to CV/Test, while the rest go to Train/Train-CV. *(Note: This experimental approach caused some Data Mismatch errors, so default random splitting is also supported).*
 * **Anchor Optimization:** Calculates optimal prior widths for the specific training dataset and compares their average IoU against the original YOLOv3 paper anchors.
 * **Smart Image Processing:** This takes Z-score normalizated batched histogram moments.Applies dataset-specific filters based on batch size and normalized histogram moments, including Histogram Equalization, Gamma Correction, Median Blur, and Bilateral Filtering (to avoid blurring crucial bounding box edges).
 * **Serialization:** Serializes it into GZIP-compressed TFRecords (train, traincv, cv, test).
