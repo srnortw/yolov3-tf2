@@ -112,7 +112,7 @@ INPUT_SIZE = 416
 #if model_name=='yolov3_construction_safety_objdet_train.tfrecord.gz_70_fine_tune.tflite':
 if model_name.startswith('yolov3_construction_safety'):
   CLASS_PATH = "data/_darknet.labels"
-  yolo_anchors=pick_anchors(name='construstion_safety',res=INPUT_SIZE)
+  yolo_anchors=pick_anchors(name='construction_safety',res=INPUT_SIZE)
 else:
   CLASS_PATH = "data/animals_class_names.txt"
   yolo_anchors=pick_anchors(res=INPUT_SIZE)
